@@ -1,36 +1,17 @@
-﻿# Micro-API de resumo de PDF
+# Micro-API de resumo de PDF
 
-## Objetivo
+API em FastAPI que recebe um PDF digital e uma sentença orientadora, extrai o texto, gera um resumo priorizado e retorna um documento Word (`.docx`). O resumo é produzido por uma heurística local e, quando configurada, pela API da OpenAI; em caso de falha da integração, a heurística local é usada como fallback.
 
-Receber um arquivo PDF e uma sentença que descreva o foco desejado pelo usuário. A API extrairá o texto do documento, usará IA para priorizar informações relacionadas à sentença e produzirá um resumo em um arquivo Word (`.docx`).
+PDFs que dependam de OCR não são processados. O repositório em memória guarda tarefas apenas durante a execução atual do processo.
 
-O resumo deve permanecer fundamentado no conteúdo extraído do PDF. A sentença orienta a seleção e a ênfase das informações; ela não substitui o conteúdo-fonte.
-
-## Status
-
-Projeto em fase inicial. O repositório contém a configuração Git e o `.gitignore`; a API e seus arquivos de dependências ainda não foram implementados. Os componentes e comandos abaixo descrevem a stack planejada.
-
-## Stack planejada
-
-- **Python 3.12 ou superior** para a implementação da API.
-- **FastAPI** para a interface HTTP e a documentação OpenAPI.
-- **PyMuPDF** para extração de texto de PDFs digitais.
-- **OpenAI API** (ou provedor compatível configurado) para gerar o resumo orientado pela sentença.
-- **python-docx** para criar o documento Word.
-- **python-dotenv** para carregar configuração local a partir de variáveis de ambiente.
-
-PDFs digitalizados que dependam de OCR não fazem parte do primeiro MVP.
-
-## Como rodar localmente
-
-### Pré-requisitos
+## Requisitos
 
 - Python 3.12 ou superior.
-- Uma chave de API válida para o provedor de IA escolhido, quando essa integração estiver implementada.
+- Chave da OpenAI opcional. Sem ela, a API usa somente o resumidor local.
 
-### Preparar o ambiente
+## Instalação e execução
 
-Na raiz do repositório, crie e ative um ambiente virtual.
+Crie e ative um ambiente virtual na raiz do projeto.
 
 **Windows PowerShell:**
 
@@ -46,57 +27,71 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Instale as dependências do projeto:
+Instale as dependências e inicie a API:
 
 ```bash
 python -m pip install -r requirements.txt
-```
-
-Configure as variáveis de ambiente conforme o arquivo `.env.example`, que será adicionado junto à implementação. A chave do provedor de IA deve permanecer local e não deve ser commitada.
-
-### Iniciar a API
-
-Após a implementação do ponto de entrada `app.main:app`, inicie o servidor de desenvolvimento com:
-
-```bash
 python -m uvicorn app.main:app --reload
 ```
 
-A documentação interativa ficará disponível em `http://127.0.0.1:8000/docs`, conforme a configuração padrão do FastAPI.
+A documentação interativa fica em `http://127.0.0.1:8000/docs`.
 
-> **Nota:** os comandos de instalação e inicialização são o fluxo planejado. Eles ainda não funcionam neste repositório porque `requirements.txt` e o módulo `app.main` não foram criados.
+## Configuração opcional da OpenAI
 
-## Roadmap de releases
+Defina estas variáveis de ambiente antes de iniciar o servidor:
 
-### Release 0.1 — Base da API
+| Variável | Padrão | Descrição |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | vazio | Chave da API. Sem chave, o resumo local é usado. |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo usado para gerar o resumo. |
+| `OPENAI_TIMEOUT_SECONDS` | `20` | Timeout em segundos, limitado pelo código ao intervalo de 1 a 120. Valores inválidos voltam a 20. |
 
-- Criar a estrutura do projeto e configurar dependências.
-- Implementar endpoint HTTP para receber PDF e sentença.
-- Validar campos obrigatórios, tipo e tamanho do arquivo.
-- Documentar a interface com OpenAPI.
+Mantenha a chave fora do controle de versão. Embora `python-dotenv` esteja listado nas dependências, o código atual não carrega automaticamente um arquivo `.env`; exporte as variáveis no ambiente do processo.
 
-### Release 0.2 — Extração de texto
+## Endpoints
 
-- Extrair texto de PDFs digitais.
-- Tratar arquivos inválidos, vazios ou sem texto extraível.
-- Definir limites de tamanho e tempo de processamento.
+### `GET /health`
 
-### Release 0.3 — Resumo assistido por IA
+Retorna o estado da API e um timestamp UTC.
 
-- Integrar o provedor de IA por configuração externa.
-- Usar a sentença do usuário para priorizar informações no resumo.
-- Tratar falhas e limites do provedor sem expor conteúdo sensível em logs.
+### `POST /tasks`
 
-### Release 0.4 — Documento Word e MVP
+Recebe `multipart/form-data` com:
 
-- Gerar `.docx` com a sentença orientadora e o resumo.
-- Retornar o arquivo gerado ao cliente.
-- Documentar instalação, configuração, uso e limitações do MVP.
+- `file`: arquivo com extensão `.pdf`.
+- `sentence`: sentença orientadora não vazia após remoção de espaços em branco.
 
-## Fora do escopo inicial
+Em caso de sucesso, responde `201 Created` com o DOCX no corpo e o identificador da tarefa no cabeçalho `X-Task-ID`. Erros de entrada retornam `400`; PDFs inválidos, sem texto extraível ou falhas de processamento retornam `422`.
 
-- OCR para PDFs digitalizados.
+### `GET /tasks`
+
+Lista as tarefas mantidas em memória.
+
+### `GET /tasks/{task_id}`
+
+Retorna uma tarefa ou `404` quando o identificador não existe.
+
+### `PUT /tasks/{task_id}`
+
+Atualiza campos aceitos pelo modelo `TaskUpdate` (`status`, `summary` e `document_url`), ou retorna `404`. O código atual não aplica regras de transição de estado.
+
+### `DELETE /tasks/{task_id}`
+
+Remove uma tarefa em memória e retorna `204`, ou `404` se ela não existir.
+
+## Limitações conhecidas
+
+- Não há OCR para PDFs digitalizados.
+- O upload é gravado temporariamente e processado de forma síncrona; ainda não há limite explícito de tamanho total do arquivo.
+- As tarefas são armazenadas em memória, sem persistência entre reinicializações.
+- Sem a chave da OpenAI, o resumo local seleciona sentenças por sobreposição de palavras com a sentença orientadora; isso não equivale a uma síntese semântica.
+- Falhas da integração com a OpenAI acionam o fallback local sem expor detalhes ao cliente.
+- Não há autenticação, autorização ou isolamento de tarefas por usuário.
+
+## Escopo fora do MVP
+
+- OCR de documentos digitalizados.
 - Interface web, autenticação e gestão de usuários.
-- Histórico ou armazenamento persistente de arquivos e resultados.
+- Persistência de arquivos e tarefas.
 - Processamento assíncrono com filas.
-- Exportação para formatos diferentes de `.docx`.
+- Exportação para formatos além de `.docx`.
