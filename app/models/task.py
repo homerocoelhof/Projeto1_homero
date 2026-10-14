@@ -1,5 +1,7 @@
 ﻿"""Modelos de dados para solicitações de resumo de PDF."""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
@@ -13,10 +15,11 @@ class TaskCreate(BaseModel):
         max_length=255,
         description="Nome do arquivo PDF enviado.",
     )
-    sentence: str = Field(
-        min_length=1,
+    summary_mode: Literal["guided", "whole"] = "guided"
+    sentence: str | None = Field(
+        default=None,
         max_length=2_000,
-        description="Sentença que orienta o foco do resumo.",
+        description="Sentença que orienta o foco do resumo, quando aplicável.",
     )
 
 
@@ -49,7 +52,8 @@ class TaskOut(BaseModel):
 
     id: str = Field(min_length=1, description="Identificador da tarefa.")
     source_filename: str = Field(min_length=1, max_length=255)
-    sentence: str = Field(min_length=1, max_length=2_000)
+    summary_mode: Literal["guided", "whole"] = "guided"
+    sentence: str | None = Field(default=None, max_length=2_000)
     status: str = Field(min_length=1, max_length=32)
     summary: str | None = None
     document_url: HttpUrl | None = None

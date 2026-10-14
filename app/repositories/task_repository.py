@@ -19,6 +19,7 @@ class TaskRepository:
         created = TaskOut(
             id=task_id,
             source_filename=task.source_filename,
+            summary_mode=task.summary_mode,
             sentence=task.sentence,
             status="pending",
         )

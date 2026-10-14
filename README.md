@@ -1,13 +1,12 @@
 # Micro-API de resumo de PDF
 
-API em FastAPI que recebe um PDF digital e uma sentença orientadora, extrai o texto, gera um resumo priorizado e retorna um documento Word (`.docx`). O resumo é produzido por uma heurística local e, quando configurada, pela API da OpenAI; em caso de falha da integração, a heurística local é usada como fallback.
-
-PDFs que dependam de OCR não são processados. O repositório em memória guarda tarefas apenas durante a execução atual do processo.
+Micro-API em FastAPI com uma interface web para receber PDFs digitais e gerar um resumo em Word (`.docx`) com base em uma sentença orientadora. O projeto mantém metadados das tarefas em memória e oferece um resumidor local, com integração opcional à API da OpenAI.
 
 ## Requisitos
 
 - Python 3.12 ou superior.
-- Chave da OpenAI opcional. Sem ela, a API usa somente o resumidor local.
+- Pip.
+- Chave da OpenAI opcional. Sem ela, o resumo usa a heurística local.
 
 ## Instalação e execução
 
@@ -27,71 +26,75 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Instale as dependências e inicie a API:
+Instale as dependências e inicie o servidor:
 
 ```bash
 python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
 ```
 
-A documentação interativa fica em `http://127.0.0.1:8000/docs`.
+A interface fica em `http://127.0.0.1:8000/`, a documentação OpenAPI em `/docs` e a verificação de saúde em `/health`.
 
-## Configuração opcional da OpenAI
+## Como usar
 
-Defina estas variáveis de ambiente antes de iniciar o servidor:
+1. Selecione um arquivo PDF digital.
+2. Escolha **Resumo por sentença orientadora** ou **Resumo do PDF inteiro**.
+3. No modo orientado, informe uma sentença que apareça no texto do PDF.
+4. Clique em **Gerar resumo em Word** para baixar o arquivo `.docx`.
+
+No modo orientado, a busca da sentença ignora diferenças entre maiúsculas e minúsculas e espaços repetidos. Se a sentença não for encontrada, a API retorna `422` e não gera o documento. No modo de documento inteiro, o resumidor considera o conteúdo de todas as páginas.
+
+## Configuração da IA
+
+A integração com a OpenAI é opcional. Defina as variáveis de ambiente antes de iniciar o servidor:
 
 | Variável | Padrão | Descrição |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | vazio | Chave da API. Sem chave, o resumo local é usado. |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo usado para gerar o resumo. |
-| `OPENAI_TIMEOUT_SECONDS` | `20` | Timeout em segundos, limitado pelo código ao intervalo de 1 a 120. Valores inválidos voltam a 20. |
+| `OPENAI_API_KEY` | vazio | Habilita o resumo pela API da OpenAI. Sem chave, usa a heurística local. |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo enviado à API. |
+| `OPENAI_TIMEOUT_SECONDS` | `20` | Timeout em segundos, limitado pelo código ao intervalo de 1 a 120. |
 
-Mantenha a chave fora do controle de versão. Embora `python-dotenv` esteja listado nas dependências, o código atual não carrega automaticamente um arquivo `.env`; exporte as variáveis no ambiente do processo.
+O projeto não carrega automaticamente arquivos `.env`; defina as variáveis no ambiente. Quando habilitada, a integração envia o texto extraído do PDF e, no modo orientado, a sentença orientadora ao provedor externo. Não envie documentos confidenciais sem considerar as políticas de dados aplicáveis.
 
-## Endpoints
+Se a chamada externa falhar ou retornar texto vazio, o resumidor local assume como fallback. No modo orientado, a heurística seleciona trechos por sobreposição de palavras com a sentença; no modo inteiro, seleciona sentenças distribuídas ao longo do documento. Ambos os resultados locais são extrativos, não uma síntese semântica.
 
-### `GET /health`
+## API e arquitetura
 
-Retorna o estado da API e um timestamp UTC.
+`POST /tasks` recebe `multipart/form-data` com `file` (PDF), `summary_mode` (`guided` ou `whole`) e `sentence` (obrigatória no modo `guided`). O modo padrão é `guided` para manter compatibilidade com clientes existentes. Em caso de sucesso, retorna `201`, o DOCX no corpo e o identificador da tarefa em `X-Task-ID`. Arquivos gerados usam nomes sequenciais como `documento_1.docx` e `documento_2.docx`.
 
-### `POST /tasks`
+A API também oferece `GET /tasks`, `GET /tasks/{task_id}`, `PUT /tasks/{task_id}` e `DELETE /tasks/{task_id}` para consultar e manter metadados das tarefas em memória.
 
-Recebe `multipart/form-data` com:
+```mermaid
+flowchart LR
+    U[Interface web ou cliente] --> R[Rotas FastAPI]
+    R --> S[TaskService]
+    S --> P[Extração de texto com PyMuPDF]
+    S --> A[PriorityAdvisor]
+    A --> L[Heurística local]
+    A --> O[OpenAI opcional]
+    S --> D[Geração DOCX]
+    S --> T[TaskRepository em memória]
+```
 
-- `file`: arquivo com extensão `.pdf`.
-- `sentence`: sentença orientadora não vazia após remoção de espaços em branco.
+- `app/api/task_routes.py`: recebe o upload, valida a entrada e traduz erros para respostas HTTP.
+- `app/services/task_service.py`: valida o PDF e a sentença quando aplicável, coordena o resumo e cria o DOCX.
+- `app/services/priority_advisor.py`: gera o resumo com a heurística local e tenta a OpenAI quando configurada.
+- `app/repositories/task_repository.py`: armazena metadados das tarefas em memória durante a execução.
+- `app/main.py`: cria a aplicação FastAPI, serve a interface web e registra as rotas.
 
-Em caso de sucesso, responde `201 Created` com o DOCX no corpo e o identificador da tarefa no cabeçalho `X-Task-ID`. Erros de entrada retornam `400`; PDFs inválidos, sem texto extraível ou falhas de processamento retornam `422`.
+## Testes
 
-### `GET /tasks`
+Instale as dependências de teste e execute:
 
-Lista as tarefas mantidas em memória.
+```bash
+python -m pip install pytest httpx
+python -m pytest
+```
 
-### `GET /tasks/{task_id}`
+## Limitações
 
-Retorna uma tarefa ou `404` quando o identificador não existe.
-
-### `PUT /tasks/{task_id}`
-
-Atualiza campos aceitos pelo modelo `TaskUpdate` (`status`, `summary` e `document_url`), ou retorna `404`. O código atual não aplica regras de transição de estado.
-
-### `DELETE /tasks/{task_id}`
-
-Remove uma tarefa em memória e retorna `204`, ou `404` se ela não existir.
-
-## Limitações conhecidas
-
-- Não há OCR para PDFs digitalizados.
-- O upload é gravado temporariamente e processado de forma síncrona; ainda não há limite explícito de tamanho total do arquivo.
-- As tarefas são armazenadas em memória, sem persistência entre reinicializações.
-- Sem a chave da OpenAI, o resumo local seleciona sentenças por sobreposição de palavras com a sentença orientadora; isso não equivale a uma síntese semântica.
-- Falhas da integração com a OpenAI acionam o fallback local sem expor detalhes ao cliente.
-- Não há autenticação, autorização ou isolamento de tarefas por usuário.
-
-## Escopo fora do MVP
-
-- OCR de documentos digitalizados.
-- Interface web, autenticação e gestão de usuários.
-- Persistência de arquivos e tarefas.
-- Processamento assíncrono com filas.
-- Exportação para formatos além de `.docx`.
+- PDFs digitalizados sem camada de texto não são processados; não há OCR.
+- O upload e o processamento são síncronos e não há limite explícito de tamanho de arquivo.
+- Metadados de tarefas e numeração de saídas são mantidos em memória e reiniciam quando o servidor reinicia.
+- A heurística local depende de correspondência lexical e pode selecionar trechos pouco relevantes.
+- A API não inclui autenticação, autorização ou persistência de tarefas.

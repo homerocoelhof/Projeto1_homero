@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
@@ -28,16 +29,22 @@ def _get_service(request: Request) -> TaskService:
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_task(
     request: Request,
-    file: UploadFile = File(..., description="Arquivo PDF digital."),
-    sentence: str = Form(..., min_length=1, description="Sentença orientadora."),
+    file: UploadFile = File(..., description="Arquivo PDF a processar."),
+    summary_mode: Literal["guided", "whole"] = Form("guided"),
+    sentence: str | None = Form(None, max_length=2_000),
 ) -> StreamingResponse:
-    """Gera resumo e retorna o DOCX; o ID da tarefa vem no cabeçalho."""
+    """Gera um resumo do PDF inteiro ou orientado por sentença."""
     original_name = (file.filename or "").replace("\\", "/")
     safe_name = Path(original_name).name
     if not safe_name or Path(safe_name).suffix.lower() != ".pdf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Envie um arquivo com extensão .pdf.",
+        )
+    if summary_mode == "guided" and not (sentence and sentence.strip()):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Informe uma sentença orientadora para este modo de resumo.",
         )
 
     try:
@@ -51,6 +58,7 @@ async def create_task(
                 _get_service(request).create_summary,
                 temp_path,
                 sentence,
+                summary_mode=summary_mode,
             )
     except ValueError as exc:
         raise HTTPException(
