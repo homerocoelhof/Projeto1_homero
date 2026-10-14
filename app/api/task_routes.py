@@ -1,7 +1,6 @@
 ﻿"""Rotas HTTP para criação e manutenção de tarefas de resumo."""
 
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Literal
 from urllib.parse import quote
 
@@ -48,18 +47,14 @@ async def create_task(
         )
 
     try:
-        with TemporaryDirectory(prefix="pdf-summary-") as temp_dir:
-            temp_path = Path(temp_dir) / safe_name
-            with temp_path.open("wb") as destination:
-                while chunk := await file.read(1024 * 1024):
-                    destination.write(chunk)
-
-            result = await run_in_threadpool(
-                _get_service(request).create_summary,
-                temp_path,
-                sentence,
-                summary_mode=summary_mode,
-            )
+        pdf_content = await file.read()
+        result = await run_in_threadpool(
+            _get_service(request).create_summary_from_bytes,
+            pdf_content,
+            safe_name,
+            sentence,
+            summary_mode=summary_mode,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

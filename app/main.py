@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal
 
 import pymupdf
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -11,6 +12,8 @@ from app.api.task_routes import router as task_router
 from app.repositories.task_repository import TaskRepository
 from app.services.priority_advisor import PriorityAdvisor
 from app.services.task_service import TaskService
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 app = FastAPI(
     title="Micro-API de resumo de PDF",

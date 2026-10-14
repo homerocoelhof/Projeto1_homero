@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f6f7f8">
+    <meta name="theme-color" content="#ffffff">
     <title>Resumo de PDF</title>
     <style>
       :root {
         color-scheme: light;
-        font-family: Inter, "Segoe UI", Arial, sans-serif;
-        color: #17212b;
-        background: #f4f6f8;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: #183153;
+        background: #ffffff;
       }
 
       * { box-sizing: border-box; }
@@ -18,103 +18,112 @@
       body {
         min-height: 100vh;
         margin: 0;
-        display: grid;
-        place-items: center;
-        padding: 32px 18px;
+        padding: 40px 20px;
       }
 
       main {
-        width: min(100%, 680px);
-        padding: 38px;
-        border: 1px solid #e1e6eb;
-        border-radius: 18px;
-        background: #fff;
-        box-shadow: 0 18px 55px rgb(22 42 63 / 8%);
+        width: min(100%, 760px);
+        margin: 0 auto;
+        padding: 30px 34px;
+        border: 1px solid #b7cee8;
+        border-radius: 5px;
+        background: #dcecff;
+        box-shadow: 0 3px 12px rgb(28 62 103 / 10%);
       }
 
       .eyebrow {
-        margin: 0 0 10px;
-        color: #126b57;
-        font-size: 12px;
-        font-weight: 750;
-        letter-spacing: .12em;
-        text-transform: uppercase;
+        margin: 0 0 5px;
+        color: #315477;
+        font-size: 13px;
+        font-weight: 600;
       }
 
-      h1 { margin: 0; font-size: clamp(28px, 5vw, 38px); letter-spacing: -.04em; }
-      .intro { margin: 12px 0 28px; color: #5c6874; line-height: 1.6; }
-      label { display: block; margin: 20px 0 8px; font-size: 14px; font-weight: 700; }
+      h1 { margin: 0; font-size: 28px; font-weight: 600; }
+      .intro { margin: 8px 0 24px; color: #315477; line-height: 1.5; }
+      .form-section { padding: 20px 0; border-top: 1px solid #bfd3e9; }
+      .form-section h2 { margin: 0 0 14px; font-size: 17px; font-weight: 600; }
+      label { display: block; margin: 0 0 7px; font-size: 14px; font-weight: 600; }
 
       input[type="file"], textarea {
         width: 100%;
-        border: 1px solid #cfd7df;
-        border-radius: 10px;
+        border: 1px solid #9db3cc;
+        border-radius: 4px;
         background: #fff;
-        color: inherit;
+        color: #212529;
         font: inherit;
       }
 
-      input[type="file"] { padding: 12px; }
-      textarea { min-height: 120px; padding: 13px 14px; resize: vertical; line-height: 1.5; }
+      input[type="file"] { padding: 9px; }
+      textarea { min-height: 110px; padding: 10px 12px; resize: vertical; line-height: 1.5; }
       input:focus-visible, textarea:focus-visible, button:focus-visible {
         outline: 3px solid rgb(18 107 87 / 25%);
         outline-offset: 2px;
-        border-color: #126b57;
+        border-color: #123b70;
       }
 
-      .hint { margin: 7px 0 0; color: #687581; font-size: 13px; }
-      fieldset { margin: 22px 0 12px; padding: 0; border: 0; }
-      legend { margin-bottom: 10px; font-size: 14px; font-weight: 700; }
-      textarea:disabled { background: #f1f3f5; color: #687581; cursor: not-allowed; }
+      .hint { margin: 6px 0 0; color: #496783; font-size: 13px; }
+      fieldset { margin: 0 0 18px; padding: 12px 15px; border: 1px solid #9db8d6; border-radius: 4px; }
+      legend { padding: 0 5px; font-size: 14px; font-weight: 600; }
+      .choice { display: flex; align-items: center; gap: 9px; margin: 9px 0; font-weight: 400; cursor: pointer; }
+      .choice input { margin: 0; accent-color: #123b70; }
+      textarea:disabled { background: #e4eaf2; color: #687581; cursor: not-allowed; }
 
       button {
-        width: 100%;
-        margin-top: 24px;
-        padding: 14px 18px;
+        min-width: 210px;
+        margin-top: 18px;
+        padding: 10px 18px;
         border: 0;
-        border-radius: 10px;
-        background: #126b57;
+        border-radius: 4px;
+        background: #123b70;
         color: #fff;
         font: inherit;
         font-weight: 700;
         cursor: pointer;
       }
 
-      button:hover:not(:disabled) { background: #0d5848; }
+      button:hover:not(:disabled) { background: #0b2f5d; }
       button:disabled { cursor: wait; opacity: .65; }
-      #message { min-height: 24px; margin: 16px 0 0; line-height: 1.5; }
-      #message[data-kind="error"] { color: #b42318; }
-      #message[data-kind="success"] { color: #126b57; }
+      #message { min-height: 24px; margin: 14px 0 0; line-height: 1.5; }
+      #message[data-kind="error"] { color: #a61b1b; }
+      #message[data-kind="success"] { color: #17643b; }
 
       @media (max-width: 520px) {
-        main { padding: 26px 20px; }
+        body { padding: 18px 12px; }
+        main { padding: 22px 18px; }
+        h1 { font-size: 24px; }
+        button { width: 100%; }
       }
     </style>
   </head>
   <body>
     <main>
-      <p class="eyebrow">Resumo de PDF</p>
-      <h1>Gere um resumo do seu PDF</h1>
+      <p class="eyebrow">Processamento de documentos</p>
+      <h1>Resumo de PDF</h1>
       <p class="intro">Escolha se deseja resumir o PDF inteiro ou priorizar uma sentença orientadora.</p>
+      <p class="hint">Com a OpenAI configurada, o resumo é semântico e relaciona as ideias do documento. Sem chave, é usado o resumo local extrativo.</p>
 
       <form id="summary-form">
-        <label for="file">Arquivo PDF</label>
-        <input id="file" name="file" type="file" accept=".pdf,application/pdf" required>
-        <p class="hint">PDFs digitalizados sem texto selecionável não são processados.</p>
+        <section class="form-section" aria-labelledby="file-heading">
+          <h2 id="file-heading">1. Selecione o arquivo</h2>
+          <label for="file">Arquivo PDF</label>
+          <input id="file" name="file" type="file" accept=".pdf,application/pdf" required>
+          <p class="hint">PDFs digitalizados sem texto selecionável não são processados.</p>
+        </section>
 
-        <fieldset>
-          <legend>Como deseja resumir?</legend>
-          <label class="choice"><input type="radio" name="summary_mode" value="guided" checked> Resumo por sentença orientadora</label>
-          <label class="choice"><input type="radio" name="summary_mode" value="whole"> Resumo do PDF inteiro</label>
-        </fieldset>
+        <section class="form-section" aria-labelledby="summary-heading">
+          <h2 id="summary-heading">2. Escolha o tipo de resumo</h2>
+          <fieldset>
+            <legend>Modo de resumo</legend>
+            <label class="choice"><input type="radio" name="summary_mode" value="guided" checked> Por sentença orientadora</label>
+            <label class="choice"><input type="radio" name="summary_mode" value="whole"> Do PDF inteiro</label>
+          </fieldset>
 
-        <div id="sentence-group">
-          <label for="sentence">Sentença orientadora</label>
-          <textarea id="sentence" name="sentence" maxlength="2000" placeholder="Ex.: Quais são as principais conclusões do estudo?" required></textarea>
-          <p class="hint">No modo orientado, a sentença deve aparecer no texto do PDF.</p>
-        </div>
-
-
+          <div id="sentence-group">
+            <label for="sentence">Sentença orientadora</label>
+            <textarea id="sentence" name="sentence" maxlength="2000" placeholder="Ex.: Quais são as principais conclusões do estudo?" required></textarea>
+            <p class="hint">No modo orientado, a sentença deve aparecer no texto do PDF.</p>
+          </div>
+        </section>
 
         <button id="submit" type="submit">Gerar resumo em Word</button>
         <p id="message" role="status" aria-live="polite"></p>
@@ -152,6 +161,21 @@
       function setMessage(text, kind = "") {
         message.textContent = text;
         message.dataset.kind = kind;
+      }
+
+      function formatErrorDetail(detail) {
+        if (typeof detail === "string") return detail;
+        if (Array.isArray(detail)) {
+          return detail.map((issue) => {
+            if (typeof issue === "string") return issue;
+            const location = Array.isArray(issue?.loc)
+              ? issue.loc.filter((part) => !["body", "query", "path"].includes(part)).join(".")
+              : "";
+            const reason = issue?.msg || JSON.stringify(issue);
+            return location ? `${location}: ${reason}` : reason;
+          }).join("; ");
+        }
+        return detail ? JSON.stringify(detail) : "Não foi possível processar o PDF.";
       }
 
       function filenameFromResponse(response, originalName) {
@@ -197,7 +221,7 @@
             let detail = "Não foi possível processar o PDF.";
             try {
               const body = await response.json();
-              if (body.detail) detail = body.detail;
+              if (body.detail) detail = formatErrorDetail(body.detail);
             } catch (_) { /* keep default message */ }
             throw new Error(detail);
           }

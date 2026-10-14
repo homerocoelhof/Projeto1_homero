@@ -56,9 +56,52 @@ class TaskService:
         if not path.is_file():
             raise ValueError("O arquivo PDF informado não existe ou não é um arquivo.")
 
+        return self._process_summary(
+            pdf_source=path,
+            source_filename=path.name,
+            sentence=sentence,
+            summary_mode=summary_mode,
+        )
+
+    def create_summary_from_bytes(
+        self,
+        pdf_content: bytes,
+        source_filename: str,
+        sentence: str | None = None,
+        *,
+        summary_mode: str = "guided",
+    ) -> TaskResult:
+        """Create a summary directly from uploaded PDF bytes."""
+        safe_filename = Path(source_filename).name
+        if Path(safe_filename).suffix.lower() != ".pdf":
+            raise ValueError("O arquivo informado deve ter extensão .pdf.")
+        if not pdf_content:
+            raise ValueError("O arquivo PDF está vazio.")
+
+        return self._process_summary(
+            pdf_source=pdf_content,
+            source_filename=safe_filename,
+            sentence=sentence,
+            summary_mode=summary_mode,
+        )
+
+    def _process_summary(
+        self,
+        *,
+        pdf_source: Path | bytes,
+        source_filename: str,
+        sentence: str | None,
+        summary_mode: str,
+    ) -> TaskResult:
+        normalized_sentence = sentence.strip() if sentence else None
+        if summary_mode not in {"guided", "whole"}:
+            raise ValueError("Modo de resumo inválido.")
+        if summary_mode == "guided" and not normalized_sentence:
+            raise ValueError("A sentença orientadora não pode estar vazia.")
+
         task = self._repository.create(
             TaskCreate(
-                source_filename=path.name,
+                source_filename=source_filename,
                 summary_mode=summary_mode,
                 sentence=normalized_sentence if summary_mode == "guided" else None,
             )
@@ -66,14 +109,21 @@ class TaskService:
         self._repository.update(task.id, TaskUpdate(status="processing"))
 
         try:
-            source_text = self._extract_text(path)
+            paragraphs = self._extract_paragraphs(pdf_source)
             if summary_mode == "guided":
-                normalized_source = self._normalize_for_search(source_text)
                 normalized_query = self._normalize_for_search(normalized_sentence or "")
-                if normalized_query not in normalized_source:
+                relevant_paragraphs = [
+                    paragraph
+                    for paragraph in paragraphs
+                    if normalized_query in self._normalize_for_search(paragraph)
+                ]
+                if not relevant_paragraphs:
                     raise TaskProcessingError(
-                        f"A sentença não foi encontrada no arquivo '{path.name}'."
+                        f"A sentença não foi encontrada no arquivo '{source_filename}'."
                     )
+                source_text = "\n\n".join(relevant_paragraphs)
+            else:
+                source_text = "\n\n".join(paragraphs)
 
             summary = self._priority_advisor.summarize(
                 source_text=source_text,
@@ -85,6 +135,7 @@ class TaskService:
             document = self._create_docx(
                 normalized_sentence or "Documento inteiro",
                 summary,
+                source_filename=source_filename,
                 heading="Sentença orientadora" if summary_mode == "guided" else "Escopo do resumo",
             )
             completed = self._repository.update(
@@ -97,7 +148,7 @@ class TaskService:
             return TaskResult(
                 task=completed,
                 document=document,
-                filename=self._next_output_filename(path.stem),
+                filename=self._next_output_filename(Path(source_filename).stem),
             )
         except Exception as exc:
             self._repository.update(task.id, TaskUpdate(status="failed"))
@@ -117,24 +168,53 @@ class TaskService:
         return f"{source_stem}_{next_number}.docx"
 
     @staticmethod
-    def _extract_text(pdf_path: Path) -> str:
-        try:
-            with pymupdf.open(pdf_path) as pdf:
-                text = "\n".join(page.get_text() for page in pdf).strip()
-        except Exception as exc:
-            raise TaskProcessingError("O arquivo não é um PDF válido ou não pôde ser lido.") from exc
-        if not text:
-            raise TaskProcessingError("O PDF não contém texto extraível.")
-        return text
+    def _extract_text(pdf_source: Path | bytes) -> str:
+        return "\n\n".join(TaskService._extract_paragraphs(pdf_source))
 
     @staticmethod
-    def _create_docx(scope: str, summary: str, *, heading: str) -> bytes:
+    def _extract_paragraphs(pdf_source: Path | bytes) -> list[str]:
+        try:
+            if isinstance(pdf_source, bytes):
+                pdf_document = pymupdf.open(stream=pdf_source, filetype="pdf")
+            else:
+                pdf_document = pymupdf.open(pdf_source)
+            with pdf_document as pdf:
+                paragraphs = [
+                    block[4].strip()
+                    for page in pdf
+                    for block in page.get_text("blocks")
+                    if block[4].strip()
+                ]
+        except Exception as exc:
+            raise TaskProcessingError("O arquivo não é um PDF válido ou não pôde ser lido.") from exc
+        if not paragraphs:
+            raise TaskProcessingError("O PDF não contém texto extraível.")
+        return paragraphs
+
+    @staticmethod
+    def _create_docx(
+        scope: str,
+        summary: str,
+        *,
+        source_filename: str,
+        heading: str,
+    ) -> bytes:
         document = Document()
         document.add_heading("Resumo do PDF", level=1)
+        document.add_paragraph(f"Arquivo analisado: {source_filename}")
         document.add_heading(heading, level=2)
         document.add_paragraph(scope)
         document.add_heading("Resumo", level=2)
-        document.add_paragraph(summary)
+        for line in summary.splitlines():
+            content = line.strip()
+            if not content:
+                continue
+            if content.startswith("## "):
+                document.add_heading(content[3:].strip(), level=3)
+            elif content.startswith(("- ", "• ")):
+                document.add_paragraph(content[2:].strip(), style="List Bullet")
+            else:
+                document.add_paragraph(content)
         output = BytesIO()
         document.save(output)
         return output.getvalue()

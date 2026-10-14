@@ -9,7 +9,7 @@ from app.services.task_service import TaskService
 
 
 class FakePriorityAdvisor:
-    def summarize(self, source_text: str, sentence: str) -> str:
+    def summarize(self, source_text: str, sentence: str | None) -> str:
         return "Resumo de teste."
 
 
@@ -74,6 +74,25 @@ def test_task_crud_returns_expected_status_codes(
     delete_response = client.delete(f"/tasks/{task_id}")
     assert delete_response.status_code == 204
     assert delete_response.content == b""
+
+
+def test_whole_pdf_route_accepts_upload_without_sentence_and_returns_docx(
+    client: TestClient,
+    pdf_bytes: bytes,
+) -> None:
+    response = client.post(
+        "/tasks",
+        files={"file": ("documento.pdf", pdf_bytes, "application/pdf")},
+        data={"summary_mode": "whole"},
+    )
+
+    assert response.status_code == 201
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    task = client.get(f"/tasks/{response.headers['x-task-id']}").json()
+    assert task["summary_mode"] == "whole"
+    assert task["sentence"] is None
 
 
 def test_get_task_returns_404_for_nonexistent_id(client: TestClient) -> None:

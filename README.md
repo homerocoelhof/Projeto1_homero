@@ -46,17 +46,17 @@ No modo orientado, a busca da sentença ignora diferenças entre maiúsculas e m
 
 ## Configuração da IA
 
-A integração com a OpenAI é opcional. Defina as variáveis de ambiente antes de iniciar o servidor:
+A integração com a OpenAI habilita resumos semânticos nos dois modos. Na raiz do projeto, copie `.env.example` para `.env` e informe sua chave em `OPENAI_API_KEY`. O arquivo `.env` é carregado automaticamente ao iniciar a aplicação e já está excluído do Git.
 
 | Variável | Padrão | Descrição |
 | --- | --- | --- |
 | `OPENAI_API_KEY` | vazio | Habilita o resumo pela API da OpenAI. Sem chave, usa a heurística local. |
 | `OPENAI_MODEL` | `gpt-4o-mini` | Modelo enviado à API. |
-| `OPENAI_TIMEOUT_SECONDS` | `20` | Timeout em segundos, limitado pelo código ao intervalo de 1 a 120. |
+| `OPENAI_TIMEOUT_SECONDS` | `30` | Timeout em segundos, limitado pelo código ao intervalo de 1 a 120. |
 
-O projeto não carrega automaticamente arquivos `.env`; defina as variáveis no ambiente. Quando habilitada, a integração envia o texto extraído do PDF e, no modo orientado, a sentença orientadora ao provedor externo. Não envie documentos confidenciais sem considerar as políticas de dados aplicáveis.
+Quando habilitada, a integração envia o texto extraído do PDF ao provedor externo. Documentos longos são divididos em trechos, resumidos semanticamente e depois sintetizados em uma resposta única. Considere as políticas de dados aplicáveis antes de enviar documentos confidenciais.
 
-Se a chamada externa falhar ou retornar texto vazio, o resumidor local assume como fallback. No modo orientado, a heurística seleciona trechos por sobreposição de palavras com a sentença; no modo inteiro, seleciona sentenças distribuídas ao longo do documento. Ambos os resultados locais são extrativos, não uma síntese semântica.
+Se a chave não estiver configurada ou a chamada externa falhar, o resumidor local assume como fallback. Esse resultado local é extrativo, não uma síntese semântica.
 
 ## API e arquitetura
 

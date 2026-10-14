@@ -2,13 +2,13 @@
 
 ## 1. Objetivo
 
-Disponibilizar uma micro-API HTTP que receba um arquivo PDF digital e uma sentença do usuário, extraia o texto do documento, gere um resumo orientado pela sentença e retorne o resultado em um arquivo Word (`.docx`).
+Disponibilizar uma micro-API em FastAPI, com interface web, que receba PDFs digitais e uma senten\u00e7a orientadora, gere um resumo em Word (`.docx`) e mantenha metadados das tarefas em mem\u00f3ria.
 
 A sentença define o foco e a ênfase do resumo. O conteúdo produzido deve se basear no texto extraído do PDF e não deve apresentar informações como se fossem provenientes do documento quando não estiverem nele.
 
 ## 2. Usuários e uso previsto
 
-O MVP destina-se a clientes que possam enviar requisições HTTP à API e receber o documento gerado. Não inclui interface gráfica para uso final.
+O MVP destina-se a pessoas que usam a interface web e a clientes que enviam requisi\u00e7\u00f5es HTTP para gerar e baixar o documento.
 
 ## 3. Requisitos funcionais
 
