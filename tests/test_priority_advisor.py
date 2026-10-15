@@ -88,16 +88,17 @@ def test_summarize_rejects_empty_source_text() -> None:
 
 
 @pytest.mark.parametrize(
-    ("sentence", "expected_heading", "expected_limit"),
+    ("sentence", "expected_heading", "expected_word_limit", "expected_tokens"),
     [
-        ("Qual o efeito da medida?", "Resposta à sentença", 120),
-        (None, "Assunto principal do PDF", 180),
+        ("Qual o efeito da medida?", "Resposta à sentença", 350, 1_050),
+        (None, "Assunto principal do PDF", 350, 1_050),
     ],
 )
 def test_openai_summary_requests_concise_representative_answer(
     sentence: str | None,
     expected_heading: str,
-    expected_limit: int,
+    expected_word_limit: int,
+    expected_tokens: int,
 ) -> None:
     source_text = (
         "A medida reduziu o consumo de energia nas escolas. "
@@ -117,17 +118,24 @@ def test_openai_summary_requests_concise_representative_answer(
     summary = advisor.summarize(source_text, sentence)
 
     assert summary == expected_summary
-    assert len(responses.calls) == 1
+    assert len(responses.calls) == 2
     call = responses.calls[0]
-    assert call["max_output_tokens"] == 600
-    assert f"cerca de {expected_limit} palavras" in call["instructions"]
-    assert "concis" in call["instructions"]
+    review_call = responses.calls[1]
+    assert call["max_output_tokens"] == expected_tokens
+    assert f"{expected_word_limit} palavras" in call["instructions"]
+    assert "semânt" in call["instructions"]
+    assert "metodologia" in call["instructions"]
+    assert "termos-chave" in call["instructions"]
+    assert "perguntas de prova" in call["instructions"]
     assert source_text in call["input"]
+    assert "verificação semântica" in review_call["instructions"]
+    assert source_text in review_call["input"]
+    assert expected_summary in review_call["input"]
     if sentence:
         assert sentence in call["input"]
-        assert "Resposta à sentença" in call["instructions"]
+        assert "sentença orientadora" in call["instructions"]
     else:
-        assert "Assunto principal do PDF" in call["instructions"]
+        assert "documento completo" in call["instructions"]
 
 
 def test_task_service_rejects_nonexistent_pdf(tmp_path: Path) -> None:
