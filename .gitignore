@@ -1,30 +1,40 @@
-﻿# Environment and secrets
+﻿# Secrets and local configuration
 .env
 .env.*
 !.env.example
+key_open.txt
+*.pem
+*.key
 
-# Local dependencies and caches
+# Python environments and caches
 .venv/
 venv/
+env/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+pytest-cache-files-*/
 .mypy_cache/
 .ruff_cache/
 
-# Build and coverage output
+# Build, coverage, and generated output
 build/
 dist/
 coverage/
 htmlcov/
+outputs/
 
-# Logs and temporary files
-*.log
-*.tmp
+# Temporary files and logs
 .tmp/
+.test-tmp/
+tmp/
+temp/
+*.tmp
+*.log
 
 # Operating system and editor files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+.vs/
