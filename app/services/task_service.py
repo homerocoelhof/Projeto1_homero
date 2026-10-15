@@ -1,5 +1,6 @@
 """Business rules for summarizing PDFs and generating Word documents."""
 
+import re
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -209,12 +210,35 @@ class TaskService:
             content = line.strip()
             if not content:
                 continue
-            if content.startswith("## "):
-                document.add_heading(content[3:].strip(), level=3)
-            elif content.startswith(("- ", "• ")):
-                document.add_paragraph(content[2:].strip(), style="List Bullet")
+            heading_match = re.match(r"^(#{1,6})\s+(.+)$", content)
+            numbered_item = re.match(r"^\d+[.)]\s+(.+)$", content)
+            if heading_match:
+                level = min(4, max(2, len(heading_match.group(1)) + 1))
+                document.add_heading(heading_match.group(2).strip(), level=level)
+            elif content.startswith("> "):
+                paragraph = document.add_paragraph(style="Quote")
+                TaskService._add_markdown_text(paragraph, content[2:].strip())
+            elif content.startswith(("- ", "* ", chr(0x2022) + " ")):
+                paragraph = document.add_paragraph(style="List Bullet")
+                TaskService._add_markdown_text(paragraph, content[2:].strip())
+            elif numbered_item:
+                paragraph = document.add_paragraph(style="List Number")
+                TaskService._add_markdown_text(paragraph, numbered_item.group(1).strip())
             else:
-                document.add_paragraph(content)
+                paragraph = document.add_paragraph()
+                TaskService._add_markdown_text(paragraph, content)
         output = BytesIO()
         document.save(output)
         return output.getvalue()
+
+    @staticmethod
+    def _add_markdown_text(paragraph: object, content: str) -> None:
+        """Preserve bold emphasis used for key findings in the generated Word file."""
+        parts = re.split(r"(\*\*.*?\*\*)", content)
+        for part in parts:
+            if not part:
+                continue
+            if part.startswith("**") and part.endswith("**"):
+                paragraph.add_run(part[2:-2]).bold = True
+            else:
+                paragraph.add_run(part)
