@@ -182,3 +182,18 @@ Ou use `make test` com GNU Make instalado. Os testes usam dependências simulada
 - A API não tem autenticação, autorização nem persistência de tarefas.
 - Se `/health` responder, mas a criação falhar com `422`, verifique se o PDF contém texto selecionável e se a sentença orientadora aparece literalmente no texto extraído.
 - Se a integração da OpenAI não for usada, confira se `OPENAI_API_KEY` está definida no `.env` e reinicie o servidor após alterá-la.
+
+## Funcionalidades futuras com PDFs
+
+As ideias abaixo podem ampliar a aplicação para além da geração de resumos. São possibilidades de implementação futura e ainda não estão disponíveis:
+
+- **Converter PDF em Word (`.docx`):** extrair texto, títulos, tabelas e imagens, preservando o máximo possível da formatação original.
+- **Converter PDF em Excel (`.xlsx`):** detectar tabelas e organizar seu conteúdo em planilhas editáveis, com uma tabela por aba quando apropriado.
+- **OCR para PDFs digitalizados:** reconhecer texto em páginas que contenham apenas imagens, habilitando resumo, busca e conversão desses arquivos.
+- **Extrair tabelas e imagens:** permitir baixar elementos selecionados do PDF em formatos reutilizáveis.
+- **Converter PDF em texto ou Markdown:** gerar arquivos simples e estruturados para edição, pesquisa ou uso em outras ferramentas.
+- **Unir, dividir e reorganizar PDFs:** combinar arquivos, extrair intervalos de páginas ou alterar a ordem das páginas.
+- **Pesquisar e responder perguntas sobre o documento:** localizar informações e apresentar respostas com referências às páginas de origem.
+- **Traduzir o conteúdo:** gerar uma cópia traduzida ou exportar a tradução para Word.
+
+Conversões de documentos podem alterar o layout, especialmente em PDFs com colunas, tabelas complexas, fontes incomuns ou digitalizações. Uma futura implementação deve indicar limitações e permitir conferir o resultado antes de utilizá-lo.
