@@ -17,9 +17,7 @@ class PriorityAdvisor:
     """Prioriza conteúdo por sentença e usa OpenAI quando configurada."""
 
     _MIN_WORDS_FOR_SEMANTIC_SUMMARY = 10
-    _STUFFING_MAX_CHARS = 12_000
-    _MAP_CHUNK_MAX_CHARS = 12_000
-    _REDUCE_MAX_CHARS = 12_000
+    _MAX_CONTEXT_CHARS = 12_000
     _WORD_PATTERN = re.compile(r"[^\W\d_]+", re.UNICODE)
     _SENTENCE_PATTERN = re.compile(r"(?<=[.!?])\s+|\n+")
     _STOPWORDS = {
@@ -189,7 +187,7 @@ class PriorityAdvisor:
             f"{instructions}"
         )
 
-        if len(source_text) <= self._STUFFING_MAX_CHARS:
+        if len(source_text) <= self._MAX_CONTEXT_CHARS:
             verified = self._request_summary(
                 instructions=review_instructions,
                 input_text=(
@@ -211,7 +209,7 @@ class PriorityAdvisor:
         # reconcile the findings so the full document is checked without exceeding
         # the model's context window.
         audit_reports: list[str] = []
-        chunks = self._split_text(source_text, limit=self._MAP_CHUNK_MAX_CHARS)
+        chunks = self._split_text(source_text, limit=self._MAX_CONTEXT_CHARS)
         for index, chunk in enumerate(chunks, start=1):
             report = self._request_summary(
                 instructions=(
@@ -240,9 +238,9 @@ class PriorityAdvisor:
             audit_reports.append(f"Trecho {index}: {report}")
 
         findings = "\n\n".join(audit_reports)
-        while len(findings) > self._REDUCE_MAX_CHARS:
+        while len(findings) > self._MAX_CONTEXT_CHARS:
             compressed: list[str] = []
-            for group in self._split_text(findings, limit=self._REDUCE_MAX_CHARS):
+            for group in self._split_text(findings, limit=self._MAX_CONTEXT_CHARS):
                 result = self._request_summary(
                     instructions=(
                         "Consolide resultados de auditoria semântica por trecho. Preserve "
@@ -329,7 +327,7 @@ class PriorityAdvisor:
         fallback: str,
     ) -> str:
         """Use stuffing for short sources and map-reduce for longer sources."""
-        if len(source_text) <= self._STUFFING_MAX_CHARS:
+        if len(source_text) <= self._MAX_CONTEXT_CHARS:
             return self._summarize_with_stuffing(
                 source_text=source_text,
                 context=context,
@@ -372,7 +370,7 @@ class PriorityAdvisor:
         fallback: str,
     ) -> str:
         """Summarize source chunks independently, then synthesize their summaries."""
-        chunks = self._split_text(source_text, limit=self._MAP_CHUNK_MAX_CHARS)
+        chunks = self._split_text(source_text, limit=self._MAX_CONTEXT_CHARS)
 
         partial_summaries: list[str] = []
         if context.startswith("Sentença orientadora:"):
@@ -410,11 +408,11 @@ class PriorityAdvisor:
                 return fallback
             partial_summaries.append(partial)
 
-        while len("\n\n".join(partial_summaries)) > self._REDUCE_MAX_CHARS:
+        while len("\n\n".join(partial_summaries)) > self._MAX_CONTEXT_CHARS:
             reduced: list[str] = []
             for group in self._split_text(
                 "\n\n".join(partial_summaries),
-                limit=self._REDUCE_MAX_CHARS,
+                limit=self._MAX_CONTEXT_CHARS,
             ):
                 item = self._request_summary(
                     instructions=(

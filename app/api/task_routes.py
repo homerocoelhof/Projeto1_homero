@@ -1,14 +1,14 @@
 ﻿"""Rotas HTTP para criação e manutenção de tarefas de resumo."""
 
 from pathlib import Path
-from typing import Literal
+from typing import NoReturn
 from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
-from app.models.task import TaskOut, TaskUpdate
+from app.models.task import SummaryMode, TaskOut, TaskUpdate
 from app.repositories.task_repository import TaskRepository
 from app.services.task_service import TaskProcessingError, TaskService
 
@@ -25,11 +25,18 @@ def _get_service(request: Request) -> TaskService:
     return request.app.state.task_service
 
 
+def _raise_task_not_found() -> NoReturn:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Tarefa não encontrada.",
+    )
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_task(
     request: Request,
     file: UploadFile = File(..., description="Arquivo PDF a processar."),
-    summary_mode: Literal["guided", "whole"] = Form("guided"),
+    summary_mode: SummaryMode = Form("guided"),
     sentence: str | None = Form(None, max_length=2_000),
 ) -> StreamingResponse:
     """Gera um resumo do PDF inteiro ou orientado por sentença."""
@@ -91,10 +98,7 @@ def get_task(task_id: str, request: Request) -> TaskOut:
     """Retorna uma tarefa ou responde 404 se ela não existir."""
     task = _get_repository(request).get_by_id(task_id)
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarefa não encontrada.",
-        )
+        _raise_task_not_found()
     return task
 
 
@@ -107,10 +111,7 @@ def update_task(
     """Atualiza uma tarefa existente ou responde 404."""
     task = _get_repository(request).update(task_id, changes)
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarefa não encontrada.",
-        )
+        _raise_task_not_found()
     return task
 
 
@@ -119,8 +120,5 @@ def delete_task(task_id: str, request: Request) -> Response:
     """Remove uma tarefa ou responde 404 se ela não existir."""
     deleted = _get_repository(request).delete(task_id)
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarefa não encontrada.",
-        )
+        _raise_task_not_found()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

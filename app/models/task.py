@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
+SummaryMode = Literal["guided", "whole"]
+
 
 class TaskCreate(BaseModel):
     """Dados necessários para criar uma tarefa de resumo."""
@@ -15,7 +17,7 @@ class TaskCreate(BaseModel):
         max_length=255,
         description="Nome do arquivo PDF enviado.",
     )
-    summary_mode: Literal["guided", "whole"] = "guided"
+    summary_mode: SummaryMode = "guided"
     sentence: str | None = Field(
         default=None,
         max_length=2_000,
@@ -52,7 +54,7 @@ class TaskOut(BaseModel):
 
     id: str = Field(min_length=1, description="Identificador da tarefa.")
     source_filename: str = Field(min_length=1, max_length=255)
-    summary_mode: Literal["guided", "whole"] = "guided"
+    summary_mode: SummaryMode = "guided"
     sentence: str | None = Field(default=None, max_length=2_000)
     status: str = Field(min_length=1, max_length=32)
     summary: str | None = None

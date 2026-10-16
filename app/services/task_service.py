@@ -10,7 +10,7 @@ from typing import Protocol
 import pymupdf
 from docx import Document
 
-from app.models.task import TaskCreate, TaskOut, TaskUpdate
+from app.models.task import SummaryMode, TaskCreate, TaskOut, TaskUpdate
 from app.repositories.task_repository import TaskRepository
 
 
@@ -43,15 +43,11 @@ class TaskService:
         pdf_path: str | Path,
         sentence: str | None = None,
         *,
-        summary_mode: str = "guided",
+        summary_mode: SummaryMode = "guided",
     ) -> TaskResult:
         """Create a sentence-guided or full-document summary as a DOCX."""
         path = Path(pdf_path).expanduser()
-        normalized_sentence = sentence.strip() if sentence else None
-        if summary_mode not in {"guided", "whole"}:
-            raise ValueError("Modo de resumo inválido.")
-        if summary_mode == "guided" and not normalized_sentence:
-            raise ValueError("A sentença orientadora não pode estar vazia.")
+        normalized_sentence = self._validate_summary_request(sentence, summary_mode)
         if path.suffix.lower() != ".pdf":
             raise ValueError("O arquivo informado deve ter extensão .pdf.")
         if not path.is_file():
@@ -60,7 +56,7 @@ class TaskService:
         return self._process_summary(
             pdf_source=path,
             source_filename=path.name,
-            sentence=sentence,
+            sentence=normalized_sentence,
             summary_mode=summary_mode,
         )
 
@@ -70,7 +66,7 @@ class TaskService:
         source_filename: str,
         sentence: str | None = None,
         *,
-        summary_mode: str = "guided",
+        summary_mode: SummaryMode = "guided",
     ) -> TaskResult:
         """Create a summary directly from uploaded PDF bytes."""
         safe_filename = Path(source_filename).name
@@ -79,10 +75,11 @@ class TaskService:
         if not pdf_content:
             raise ValueError("O arquivo PDF está vazio.")
 
+        normalized_sentence = self._validate_summary_request(sentence, summary_mode)
         return self._process_summary(
             pdf_source=pdf_content,
             source_filename=safe_filename,
-            sentence=sentence,
+            sentence=normalized_sentence,
             summary_mode=summary_mode,
         )
 
@@ -92,19 +89,13 @@ class TaskService:
         pdf_source: Path | bytes,
         source_filename: str,
         sentence: str | None,
-        summary_mode: str,
+        summary_mode: SummaryMode,
     ) -> TaskResult:
-        normalized_sentence = sentence.strip() if sentence else None
-        if summary_mode not in {"guided", "whole"}:
-            raise ValueError("Modo de resumo inválido.")
-        if summary_mode == "guided" and not normalized_sentence:
-            raise ValueError("A sentença orientadora não pode estar vazia.")
-
         task = self._repository.create(
             TaskCreate(
                 source_filename=source_filename,
                 summary_mode=summary_mode,
-                sentence=normalized_sentence if summary_mode == "guided" else None,
+                sentence=sentence if summary_mode == "guided" else None,
             )
         )
         self._repository.update(task.id, TaskUpdate(status="processing"))
@@ -128,7 +119,7 @@ class TaskService:
 
             summary = self._priority_advisor.summarize(
                 source_text=source_text,
-                sentence=normalized_sentence if summary_mode == "guided" else None,
+                sentence=sentence if summary_mode == "guided" else None,
             ).strip()
             if not summary:
                 raise TaskProcessingError("O componente de resumo retornou conteúdo vazio.")
@@ -156,6 +147,18 @@ class TaskService:
             if isinstance(exc, TaskProcessingError):
                 raise
             raise TaskProcessingError("Não foi possível processar o arquivo PDF.") from exc
+
+    @staticmethod
+    def _validate_summary_request(
+        sentence: str | None,
+        summary_mode: SummaryMode,
+    ) -> str | None:
+        normalized_sentence = sentence.strip() if sentence else None
+        if summary_mode not in {"guided", "whole"}:
+            raise ValueError("Modo de resumo inválido.")
+        if summary_mode == "guided" and not normalized_sentence:
+            raise ValueError("A sentença orientadora não pode estar vazia.")
+        return normalized_sentence
 
     @staticmethod
     def _normalize_for_search(text: str) -> str:
