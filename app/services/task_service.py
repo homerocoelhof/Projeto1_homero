@@ -103,7 +103,7 @@ class TaskService:
         try:
             paragraphs = self._extract_paragraphs(pdf_source)
             if summary_mode == "guided":
-                normalized_query = self._normalize_for_search(normalized_sentence or "")
+                normalized_query = self._normalize_for_search(sentence or "")
                 relevant_paragraphs = [
                     paragraph
                     for paragraph in paragraphs
@@ -125,7 +125,7 @@ class TaskService:
                 raise TaskProcessingError("O componente de resumo retornou conteúdo vazio.")
 
             document = self._create_docx(
-                normalized_sentence or "Documento inteiro",
+                sentence or "Documento inteiro",
                 summary,
                 source_filename=source_filename,
                 heading="Sentença orientadora" if summary_mode == "guided" else "Escopo do resumo",
