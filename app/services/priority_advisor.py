@@ -530,6 +530,7 @@ class PriorityAdvisor:
         fallback: str,
         max_output_tokens: int = 800,
     ) -> str:
+        """Call the configured model and return fallback text on failure."""
         if not self._api_key or self._client is None:
             return fallback
         try:
@@ -580,6 +581,7 @@ class PriorityAdvisor:
 
     @classmethod
     def _keywords(cls, text: str) -> set[str]:
+        """Return meaningful normalized words from a text sample."""
         return {
             word.casefold()
             for word in cls._WORD_PATTERN.findall(text)
@@ -588,10 +590,12 @@ class PriorityAdvisor:
 
     @classmethod
     def _relevance(cls, text: str, query_terms: set[str]) -> int:
+        """Count shared keywords between text and the query term set."""
         return len(cls._keywords(text) & query_terms)
 
     @staticmethod
     def _join_with_limit(sentences: list[str], *, limit: int) -> str:
+        """Join sentences and truncate the result at a word boundary."""
         summary = " ".join(sentences)
         if len(summary) <= limit:
             return summary
@@ -599,6 +603,7 @@ class PriorityAdvisor:
 
     @staticmethod
     def _read_timeout() -> float:
+        """Read and clamp the OpenAI timeout configured in the environment."""
         try:
             value = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
         except ValueError:

@@ -1,3 +1,5 @@
+"""Configure the FastAPI application and its shared services."""
+
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -45,6 +47,8 @@ async def frontend() -> FileResponse:
 
 
 class HealthResponse(BaseModel):
+    """Response body returned by the health endpoint."""
+
     status: Literal["ok"]
     timestamp: datetime
 

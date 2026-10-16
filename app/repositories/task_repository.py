@@ -10,6 +10,7 @@ class TaskRepository:
     """Armazena tarefas em memória durante a execução do processo."""
 
     def __init__(self) -> None:
+        """Initialize the in-memory task store and its lock."""
         self._tasks: dict[str, TaskOut] = {}
         self._lock = RLock()
 

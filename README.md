@@ -1,6 +1,6 @@
 # Micro-API de resumo de PDF
 
-Micro-API em FastAPI com interface web para receber PDFs digitais e gerar documentos Word (`.docx`). O resumo pode cobrir o PDF inteiro ou responder a uma sentença orientadora. Os metadados das tarefas ficam em memória. A aplicação usa a OpenAI quando configurada e mantém uma heurística local como fallback.
+Micro-API em Python 3.12 com FastAPI com interface web para receber PDFs digitais e gerar resumos destes em documentos Word (.docx). O resumo pode cobrir o PDF inteiro ou responder a uma sentença orientadora. Os metadados das tarefas ficam em memória. A aplicação usa a OpenAI quando configurada e mantém uma heurística local como fallback.
 
 ## Requisitos
 

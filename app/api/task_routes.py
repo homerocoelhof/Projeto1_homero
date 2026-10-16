@@ -26,6 +26,7 @@ def _get_service(request: Request) -> TaskService:
 
 
 def _raise_task_not_found() -> NoReturn:
+    """Raise the standard 404 response for a missing task."""
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Tarefa não encontrada.",

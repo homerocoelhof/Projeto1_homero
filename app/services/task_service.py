@@ -15,11 +15,17 @@ from app.repositories.task_repository import TaskRepository
 
 
 class PriorityAdvisor(Protocol):
-    def summarize(self, source_text: str, sentence: str | None) -> str: ...
+    """Interface implemented by local or remote summary providers."""
+
+    def summarize(self, source_text: str, sentence: str | None) -> str:
+        """Summarize source text, optionally guided by a sentence."""
+        ...
 
 
 @dataclass(frozen=True)
 class TaskResult:
+    """Bundle the completed task, generated DOCX bytes, and download name."""
+
     task: TaskOut
     document: bytes
     filename: str
@@ -33,6 +39,7 @@ class TaskService:
     """Coordinates PDF extraction, summary generation, and DOCX creation."""
 
     def __init__(self, repository: TaskRepository, priority_advisor: PriorityAdvisor) -> None:
+        """Configure task persistence and the summary provider."""
         self._repository = repository
         self._priority_advisor = priority_advisor
         self._filename_lock = Lock()
@@ -91,6 +98,7 @@ class TaskService:
         sentence: str | None,
         summary_mode: SummaryMode,
     ) -> TaskResult:
+        """Extract relevant PDF text, generate a summary, and store its task."""
         task = self._repository.create(
             TaskCreate(
                 source_filename=source_filename,
@@ -153,6 +161,7 @@ class TaskService:
         sentence: str | None,
         summary_mode: SummaryMode,
     ) -> str | None:
+        """Validate the requested mode and return the trimmed sentence."""
         normalized_sentence = sentence.strip() if sentence else None
         if summary_mode not in {"guided", "whole"}:
             raise ValueError("Modo de resumo inválido.")
@@ -162,9 +171,11 @@ class TaskService:
 
     @staticmethod
     def _normalize_for_search(text: str) -> str:
+        """Normalize whitespace and case for sentence matching."""
         return " ".join(text.casefold().split())
 
     def _next_output_filename(self, source_stem: str) -> str:
+        """Return a unique DOCX filename for this source document."""
         key = source_stem.casefold()
         with self._filename_lock:
             next_number = self._filename_counters.get(key, 0) + 1
@@ -173,10 +184,12 @@ class TaskService:
 
     @staticmethod
     def _extract_text(pdf_source: Path | bytes) -> str:
+        """Extract all readable PDF paragraphs as one string."""
         return "\n\n".join(TaskService._extract_paragraphs(pdf_source))
 
     @staticmethod
     def _extract_paragraphs(pdf_source: Path | bytes) -> list[str]:
+        """Extract non-empty text blocks from a PDF path or byte stream."""
         try:
             if isinstance(pdf_source, bytes):
                 pdf_document = pymupdf.open(stream=pdf_source, filetype="pdf")
@@ -203,6 +216,7 @@ class TaskService:
         source_filename: str,
         heading: str,
     ) -> bytes:
+        """Render the summary and its metadata as a Word document."""
         document = Document()
         document.add_heading("Resumo do PDF", level=1)
         document.add_paragraph(f"Arquivo analisado: {source_filename}")
